@@ -64,5 +64,8 @@
     "plugins": [
       "@babel/plugin-transform-react-jsx"
     ]
+  },
+  "devDependencies": {
+    "prettier": "2.8.1"
   }
 }
