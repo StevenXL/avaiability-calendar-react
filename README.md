@@ -80,6 +80,7 @@ const Calendar = CalendarTemplate({
     fontFamily: "Roboto",
     fontSize: 14,
     startTime: "5:00",
-    endTime: "22:00"
+    endTime: "22:00",
+    interval: 30
 });
 ```

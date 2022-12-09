@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import moment from "moment";
 import { IconButton, Grid, makeStyles, Card, Button, CircularProgress, Popover } from "@material-ui/core";
-import { createTheme, ThemeProvider } from '@material-ui/core/styles';
+import { createMuiTheme, ThemeProvider } from "@material-ui/core/styles";
 import { ArrowLeft, ArrowRight } from "@material-ui/icons";
 
 const CalendarTemplate = ({
@@ -13,9 +13,13 @@ const CalendarTemplate = ({
   fontSize = 12,
   primaryFontColor = "#222222",
   startTime = "8:00",
-  endTime = "20:00"
+  endTime = "20:00",
+  interval = 60 // in minutes, must be >= 1 and <= 60
+
 }) => {
-  const theme = createTheme({
+  const momentStarTime = strToMoment(startTime);
+  const momentEndTime = strToMoment(endTime);
+  const theme = createMuiTheme({
     typography: {
       fontFamily: `${fontFamily}`,
       fontSize: fontSize
@@ -124,95 +128,25 @@ const CalendarTemplate = ({
   });
 
   const getDefaultTimes = () => {
-    const times = [{
-      time: "0:00",
-      available: false
-    }, {
-      time: "1:00",
-      available: false
-    }, {
-      time: "2:00",
-      available: false
-    }, {
-      time: "3:00",
-      available: false
-    }, {
-      time: "4:00",
-      available: false
-    }, {
-      time: "5:00",
-      available: false
-    }, {
-      time: "6:00",
-      available: false
-    }, {
-      time: "7:00",
-      available: false
-    }, {
-      time: "8:00",
-      available: false
-    }, {
-      time: "9:00",
-      available: false
-    }, {
-      time: "10:00",
-      available: false
-    }, {
-      time: "11:00",
-      available: false
-    }, {
-      time: "12:00",
-      available: false
-    }, {
-      time: "13:00",
-      available: false
-    }, {
-      time: "14:00",
-      available: false
-    }, {
-      time: "15:00",
-      available: false
-    }, {
-      time: "16:00",
-      available: false
-    }, {
-      time: "17:00",
-      available: false
-    }, {
-      time: "18:00",
-      available: false
-    }, {
-      time: "19:00",
-      available: false
-    }, {
-      time: "20:00",
-      available: false
-    }, {
-      time: "21:00",
-      available: false
-    }, {
-      time: "22:00",
-      available: false
-    }, {
-      time: "23:00",
-      available: false
-    }, {
-      time: "0:00",
-      available: false
-    }];
-    let include = false;
-    return times.filter(time => {
-      if (time.time === startTime) {
-        include = true;
-      }
+    const times = [];
+    let currTime = momentStarTime;
 
-      if (time.time === endTime) {
-        include = false;
-        return true;
-      }
+    while (true) {
+      const isBetween = currTime.isBetween(momentStarTime, momentEndTime, undefined, "[]");
 
-      return include;
-    });
+      if (isBetween) {
+        const time = currTime.format("HH:mm");
+        times.push({
+          time,
+          available: false
+        });
+        currTime = currTime.clone().add(interval, "minutes");
+      } else {
+        break;
+      }
+    }
+
+    return times;
   };
 
   function TimeButton({
@@ -239,18 +173,18 @@ const CalendarTemplate = ({
 
     for (let range of availability) {
       let start = moment(range.start);
-      let startTime = `${start.format("H")}:${start.format("mm")}`;
+      let startStr = `${start.format("H")}:${start.format("mm")}`;
       let end = moment(range.end);
-      let endTime = `${end.format("H")}:${end.format("mm")}`;
+      let endStr = `${end.format("H")}:${end.format("mm")}`;
       let year = Number(start.format("YYYY"));
       let month = start.format("MMMM");
       let day = Number(start.format("D"));
       fillOutputWithDefaultTimes(output, year, month, day);
       let i = 0;
 
-      while (i < output[year][month][day].length && output[year][month][day][i].time !== startTime) i++;
+      while (i < output[year][month][day].length && output[year][month][day][i].time !== startStr) i++;
 
-      while (i < output[year][month][day].length && output[year][month][day][i].time !== endTime) {
+      while (i < output[year][month][day].length && output[year][month][day][i].time !== endStr) {
         output[year][month][day][i].available = true;
         i++;
       }
@@ -427,7 +361,9 @@ const CalendarTemplate = ({
     const handleOpenPopover = date => {
       return e => {
         if (quickAvailability[date]) {
-          setPopoverContent(quickAvailability[date].map(time => /*#__PURE__*/React.createElement("p", null, time)));
+          setPopoverContent(quickAvailability[date].map(time => /*#__PURE__*/React.createElement("p", {
+            key: time
+          }, time)));
           setAnchorEl(e.target);
         }
       };
@@ -438,6 +374,9 @@ const CalendarTemplate = ({
       setPopoverContent(null);
     };
 
+    const midPt = Math.floor(times.length / 2);
+    const timesFirstHalf = times.slice(0, midPt);
+    const timesSecondHalf = times.slice(midPt, times.length);
     return /*#__PURE__*/React.createElement(ThemeProvider, {
       theme: theme
     }, /*#__PURE__*/React.createElement(Grid, {
@@ -481,7 +420,7 @@ const CalendarTemplate = ({
     }, /*#__PURE__*/React.createElement(IconButton, {
       onClick: createDayHandler(day),
       color: activeDay === day ? "primary" : availabilityState[year] && availabilityState[year][month] && availabilityState[year][month][day] && availabilityState[year][month][day].filter(x => x.available).length > 0 ? "secondary" : "default",
-      disabled: !day || year === Number(today.format("YYYY")) && month === today.format("MMMM") && day < Number(today.format("D")),
+      disabled: !day || year === Number(today.format("YYYY")) && month === today.format("MMMM") && day <= Number(today.format("D")),
       size: "medium",
       onMouseEnter: handleOpenPopover(`${month} ${day}, ${year}`),
       onMouseLeave: handleClosePopover
@@ -520,11 +459,11 @@ const CalendarTemplate = ({
       direction: "column",
       alignItems: "center",
       wrap: "wrap"
-    }, times.map((time, i) => i < times.length - 7 && /*#__PURE__*/React.createElement(TimeButton, {
+    }, timesFirstHalf.map((time, i) => i < times.length - 1 && /*#__PURE__*/React.createElement(TimeButton, {
       key: time.time,
       className: classes.button,
-      start: time.time,
-      end: times[i + 1].time,
+      start: formatTime(time.time, TIME_FORMAT),
+      end: formatTime(times[i + 1].time, TIME_FORMAT),
       handleClick: createTimeHandler(i),
       available: time.available
     })))), /*#__PURE__*/React.createElement(Grid, {
@@ -534,14 +473,18 @@ const CalendarTemplate = ({
       direction: "column",
       alignItems: "center",
       wrap: "wrap"
-    }, times.map((time, i) => i < times.length - 1 && i > 5 && /*#__PURE__*/React.createElement(TimeButton, {
-      key: time.time,
-      className: classes.button,
-      start: time.time,
-      end: times[i + 1].time,
-      handleClick: createTimeHandler(i),
-      available: time.available
-    })))))))), /*#__PURE__*/React.createElement(Grid, {
+    }, timesSecondHalf.map((time, i) => {
+      // We are iterating over the second half of `times` so we need to offset the index by the length of the first half
+      const adjustedIdx = timesFirstHalf.length + i;
+      return adjustedIdx < times.length - 1 && /*#__PURE__*/React.createElement(TimeButton, {
+        key: time.time,
+        className: classes.button,
+        start: formatTime(time.time, TIME_FORMAT),
+        end: formatTime(times[adjustedIdx + 1].time, TIME_FORMAT),
+        handleClick: createTimeHandler(adjustedIdx),
+        available: time.available
+      });
+    }))))))), /*#__PURE__*/React.createElement(Grid, {
       item: true
     }, /*#__PURE__*/React.createElement(Grid, {
       container: true,
@@ -626,5 +569,13 @@ const CalendarTemplate = ({
     }
   };
 };
+
+const TIME_FORMAT = "h:mm A";
+
+const strToMoment = str => {
+  return moment(str, "HH:mm");
+};
+
+const formatTime = (timeStr, formatStr) => moment(timeStr, "HH:mm").format(formatStr);
 
 export default CalendarTemplate;
