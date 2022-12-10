@@ -229,9 +229,9 @@ const CalendarTemplate = ({
     for (let range of availability) {
       if (new Date(range.start) > new Date()) {
         let day = moment(range.start).format("MMMM D, YYYY");
-        let time = `${moment(range.start).format("H:mm")} - ${moment(
+        let time = `${moment(range.start).format(TIME_FORMAT)} - ${moment(
           range.end
-        ).format("H:mm")}`;
+        ).format(TIME_FORMAT)}`;
         if (output[day]) {
           output[day].push(time);
         } else {
